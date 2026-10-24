@@ -1,18 +1,11 @@
 import React, { useState } from 'react';
 import { 
-  Sparkles, Info, ArrowRight, AlertTriangle, CheckCircle2, 
+  Sparkles, Info, ArrowRight, CheckCircle2, 
   Calendar, Layers, Package, Users, Cog, ShieldCheck, 
-  RotateCcw, BarChart3, Truck, AlertOctagon, HelpCircle, X, ExternalLink
+  RotateCcw, BarChart3, Truck, AlertTriangle, X, Lightbulb
 } from 'lucide-react';
-import { 
-  Vendor, CausalNode, AIInsightItem, AIActionRecommendation, Language 
-} from '../../types';
-import { 
-  INITIAL_CAUSAL_NODES, INITIAL_AI_INSIGHTS, 
-  INITIAL_AI_ACTIONS 
-} from '../../services/mockData';
+import { Vendor, Language } from '../../types';
 import { operationsService } from '../../services/operationsService';
-import { translations } from '../../locales/i18n';
 
 interface ExecutiveDashboardProps {
   currentLang: Language;
@@ -23,81 +16,343 @@ interface ExecutiveDashboardProps {
 }
 
 export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
-  currentLang,
   selectedVendorId,
   onSelectVendor,
   vendors,
   onNavigateToTab
 }) => {
-  const t = translations[currentLang];
   const [activeFilter, setActiveFilter] = useState<'all' | 'vendor' | 'sku'>('all');
   const [activeInsightTab, setActiveInsightTab] = useState<'main' | 'chains'>('main');
-  const [selectedNode, setSelectedNode] = useState<CausalNode | null>(null);
   const [showExplainModal, setShowExplainModal] = useState(false);
-  const [aiActions, setAiActions] = useState<AIActionRecommendation[]>(INITIAL_AI_ACTIONS);
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
 
-  const selectedVendor = vendors.find(v => v.id === selectedVendorId);
-
-  // Driver Analysis percentages
-  const driverData = [
-    { label: 'Kế hoạch sản xuất', percent: 28, color: 'bg-rose-500', icon: Calendar },
-    { label: 'Prebuild', percent: 12, color: 'bg-emerald-500', icon: Layers },
-    { label: 'Kho vật liệu', percent: 18, color: 'bg-cyan-500', icon: Package },
-    { label: 'Nhân lực', percent: 15, color: 'bg-purple-500', icon: Users },
-    { label: 'Thiết bị', percent: 13, color: 'bg-amber-500', icon: Cog },
-    { label: 'Chất lượng', percent: 10, color: 'bg-blue-500', icon: ShieldCheck },
-    { label: 'Rework', percent: 8, color: 'bg-red-400', icon: RotateCcw },
-    { label: 'Yếu tố bên ngoài', percent: 4, color: 'bg-orange-500', icon: AlertTriangle },
+  // 1. Causal Nodes Definition matching Screenshot 100%
+  const causalNodes = [
+    {
+      id: 'node-plan',
+      title: 'KẾ HOẠCH SẢN XUẤT',
+      icon: Calendar,
+      themeColor: 'border-[#1e3a8a] bg-[#081730]',
+      iconBg: 'bg-[#1d4ed8]',
+      iconColor: 'text-white',
+      bullets: [
+        'Kế hoạch hôm nay',
+        'Kế hoạch tiếp theo',
+        'Độ ổn định kế hoạch',
+        'Thay đổi khẩn cấp'
+      ],
+      bulletDot: 'bg-[#00e5ff]',
+      col: 1
+    },
+    {
+      id: 'node-prebuild',
+      title: 'PREBUILD',
+      icon: Layers,
+      themeColor: 'border-[#065f46] bg-[#07241f]',
+      iconBg: 'bg-[#059669]',
+      iconColor: 'text-white',
+      bullets: [
+        'Sản xuất trước để gối',
+        'Số lượng Prebuild',
+        'Độ bao phủ kế hoạch',
+        'Giải tỏa áp lực đơn hàng'
+      ],
+      bulletDot: 'bg-[#10b981]',
+      col: 1
+    },
+    {
+      id: 'node-material',
+      title: 'KHO VẬT LIỆU',
+      icon: Package,
+      themeColor: 'border-[#0e7490] bg-[#072233]',
+      iconBg: 'bg-[#0891b2]',
+      iconColor: 'text-white',
+      bullets: [
+        'Tồn kho',
+        'Thiếu vật liệu',
+        'Thời gian cung ứng',
+        'Chất lượng vật liệu'
+      ],
+      bulletDot: 'bg-[#00e5ff]',
+      col: 1
+    },
+    {
+      id: 'node-qc',
+      title: 'CHẤT LƯỢNG (QC)',
+      icon: ShieldCheck,
+      themeColor: 'border-[#9f1239] bg-[#290d16]',
+      iconBg: 'bg-[#e11d48]',
+      iconColor: 'text-white',
+      bullets: [
+        'Tỷ lệ lỗi',
+        'Hàng chờ QC',
+        'Tiêu chuẩn chất lượng',
+        'Kiểm tra đầu vào'
+      ],
+      bulletDot: 'bg-[#f43f5e]',
+      col: 2
+    },
+    {
+      id: 'node-hr',
+      title: 'NHÂN LỰC',
+      icon: Users,
+      themeColor: 'border-[#6b21a8] bg-[#1d0f30]',
+      iconBg: 'bg-[#9333ea]',
+      iconColor: 'text-white',
+      bullets: [
+        'Số lượng nhân công',
+        'Tay nghề',
+        'Tỷ lệ nghỉ việc',
+        'Tăng ca'
+      ],
+      bulletDot: 'bg-[#c084fc]',
+      col: 2
+    },
+    {
+      id: 'node-equipment',
+      title: 'THIẾT BỊ',
+      icon: Cog,
+      themeColor: 'border-[#92400e] bg-[#2a1a0c]',
+      iconBg: 'bg-[#d97706]',
+      iconColor: 'text-white',
+      bullets: [
+        'Hiệu suất (OEE)',
+        'Thời gian dừng máy',
+        'Bảo trì',
+        'Sự cố bất thường'
+      ],
+      bulletDot: 'bg-[#f59e0b]',
+      col: 2
+    },
+    {
+      id: 'node-rework',
+      title: 'REWORK',
+      icon: RotateCcw,
+      themeColor: 'border-[#9a3412] bg-[#2a160b]',
+      iconBg: 'bg-[#ea580c]',
+      iconColor: 'text-white',
+      bullets: [
+        'Số lượng hàng hỏng',
+        'Số lượng làm lại',
+        'Thời gian rework',
+        'Tỷ lệ tái lỗi'
+      ],
+      bulletDot: 'bg-[#fb923c]',
+      col: 3
+    },
+    {
+      id: 'node-output',
+      title: 'SẢN LƯỢNG THỰC TẾ',
+      icon: BarChart3,
+      themeColor: 'border-cyan-400 bg-gradient-to-br from-[#0c2e56] to-[#061833] ring-4 ring-cyan-500/30 shadow-[0_0_30px_rgba(6,182,212,0.5)]',
+      iconBg: 'bg-[#0070d8]',
+      iconColor: 'text-white',
+      bullets: [
+        'Sản lượng đạt được',
+        'Tỷ lệ hoàn thành',
+        'Năng suất theo giờ',
+        'Sản lượng còn thiếu'
+      ],
+      bulletDot: 'bg-[#00e5ff]',
+      col: 3,
+      isCenterHub: true
+    },
+    {
+      id: 'node-external',
+      title: 'YẾU TỐ BÊN NGOÀI',
+      icon: AlertTriangle,
+      themeColor: 'border-[#991b1b] bg-[#2b0c12]',
+      iconBg: 'bg-[#dc2626]',
+      iconColor: 'text-white',
+      bullets: [
+        'Thay đổi đơn hàng',
+        'Vấn đề logistics',
+        'Thời tiết / thiên tai',
+        'Quy định pháp lý'
+      ],
+      bulletDot: 'bg-[#f87171]',
+      col: 3
+    },
+    {
+      id: 'node-delivery',
+      title: 'GIAO HÀNG (TO / OTD)',
+      icon: Truck,
+      themeColor: 'border-[#065f46] bg-[#07251f]',
+      iconBg: 'bg-[#059669]',
+      iconColor: 'text-white',
+      bullets: [
+        'Số lượng phải giao',
+        'Số lượng đã giao',
+        'Tỷ lệ đúng hạn (OTD)',
+        'Nguy cơ trễ hạn'
+      ],
+      bulletDot: 'bg-[#10b981]',
+      col: 4
+    }
   ];
 
-  const handleExecuteAction = (action: AIActionRecommendation) => {
+  // 2. AI Insight Items matching Screenshot 100%
+  const aiInsights = [
+    {
+      rank: 1,
+      circleBg: 'bg-[#f43f5e]',
+      title: 'Thiếu vật liệu tại DAAL',
+      badge: '0.82',
+      badgeColor: 'bg-[#450a0a] text-[#f87171] border border-[#dc2626]/60',
+      description: 'Làm giảm 32% sản lượng, ảnh hưởng trực tiếp đến nguy cơ trễ giao hàng.',
+      vendorId: 'v-daal'
+    },
+    {
+      rank: 2,
+      circleBg: 'bg-[#f59e0b]',
+      title: 'Thời gian dừng máy tại KTECH',
+      badge: '0.67',
+      badgeColor: 'bg-[#431407] text-[#fb923c] border border-[#ea580c]/60',
+      description: 'Làm giảm 18% sản lượng do sự cố thiết bị.',
+      vendorId: 'v-ktech'
+    },
+    {
+      rank: 3,
+      circleBg: 'bg-[#a855f7]',
+      title: 'Tỷ lệ rework cao tại HOJEONG VINA',
+      badge: '0.59',
+      badgeColor: 'bg-[#431407] text-[#fb923c] border border-[#ea580c]/60',
+      description: 'Làm tăng 12% thời gian sản xuất, ảnh hưởng tiến độ giao hàng.',
+      vendorId: 'v-hojeongvina'
+    },
+    {
+      rank: 4,
+      circleBg: 'bg-[#10b981]',
+      title: 'Thiếu nhân lực tại HSTEC',
+      badge: '0.48',
+      badgeColor: 'bg-[#042f2e] text-[#2dd4bf] border border-[#0d9488]/60',
+      description: 'Giảm năng suất 15%, cần bổ sung 12 nhân công.',
+      vendorId: 'v-hstec'
+    },
+    {
+      rank: 5,
+      circleBg: 'bg-[#f59e0b]',
+      title: 'Kế hoạch thay đổi đột xuất',
+      badge: '0.71',
+      badgeColor: 'bg-[#431407] text-[#fb923c] border border-[#ea580c]/60',
+      description: 'Gây xáo trộn kế hoạch, tăng thời gian chờ.'
+    },
+    {
+      rank: 6,
+      circleBg: 'bg-[#f59e0b]',
+      title: 'Prebuild chưa đủ tại DAAL',
+      badge: '0.63',
+      badgeColor: 'bg-[#431407] text-[#fb923c] border border-[#ea580c]/60',
+      description: 'Độ bao phủ kế hoạch thấp, tăng áp lực sản xuất hiện tại.',
+      vendorId: 'v-daal'
+    }
+  ];
+
+  // 2b. AI Cause Chains Definition (Chuỗi nguyên nhân)
+  const aiChains = [
+    {
+      id: 1,
+      source: 'DAAL: Thiếu vật liệu IC TPS54302',
+      impact: 'Dừng Line SMT #02 & #04 (2.5h)',
+      result: 'Hụt 3,800 pcs sản lượng cuối ngày',
+      weight: '0.82',
+      vendorId: 'v-daal'
+    },
+    {
+      id: 2,
+      source: 'KTECH: Kẹt feeder tự động slot #14',
+      impact: 'Dừng đột xuất 75 phút tại Line 3',
+      result: 'OEE giảm từ 82% xuống 60%',
+      weight: '0.67',
+      vendorId: 'v-ktech'
+    },
+    {
+      id: 3,
+      source: 'HOJEONG VINA: Lệch nhiệt độ bể hàn sóng',
+      impact: 'Tỷ lệ lỗi hàn chập tăng vọt 2.85%',
+      result: 'Tăng 12% hàng chờ Rework & chậm OTD',
+      weight: '0.59',
+      vendorId: 'v-hojeongvina'
+    },
+    {
+      id: 4,
+      source: 'HSTEC: 12 công nhân nghỉ do dịch cúm',
+      impact: 'Thiếu nhân lực khâu đóng gói & test',
+      result: 'Năng suất giảm 15% so với target',
+      weight: '0.48',
+      vendorId: 'v-hstec'
+    }
+  ];
+
+  // 3. Driver Analysis Bars matching Screenshot 100%
+  const driverBars = [
+    { label: 'Kế hoạch sản xuất', percent: 28, color: 'bg-[#f43f5e]', icon: Calendar },
+    { label: 'Prebuild', percent: 12, color: 'bg-[#10b981]', icon: Layers },
+    { label: 'Kho vật liệu', percent: 18, color: 'bg-[#38bdf8]', icon: Package },
+    { label: 'Nhân lực', percent: 15, color: 'bg-[#a855f7]', icon: Users },
+    { label: 'Thiết bị', percent: 13, color: 'bg-[#f59e0b]', icon: Cog },
+    { label: 'Chất lượng', percent: 10, color: 'bg-[#818cf8]', icon: ShieldCheck },
+    { label: 'Rework', percent: 8, color: 'bg-[#fb7185]', icon: RotateCcw },
+    { label: 'Yếu tố bên ngoài', percent: 4, color: 'bg-[#dc2626]', icon: AlertTriangle }
+  ];
+
+  // 4. Action Recommendations matching Screenshot 100%
+  const actionList = [
+    {
+      order: 1,
+      text: 'Bổ sung vật liệu cho DAAL trong 2 giờ tới.',
+      priority: 'Cao',
+      badgeClass: 'bg-[#450a0a] text-[#f87171] border border-[#b91c1c]'
+    },
+    {
+      order: 2,
+      text: 'Điều chuyển 5 nhân công từ KHV sang DAAL.',
+      priority: 'Cao',
+      badgeClass: 'bg-[#450a0a] text-[#f87171] border border-[#b91c1c]'
+    },
+    {
+      order: 3,
+      text: 'Rút ngắn thời gian QC, tăng 1 line kiểm tra.',
+      priority: 'Trung bình',
+      badgeClass: 'bg-[#431407] text-[#fb923c] border border-[#c2410c]'
+    },
+    {
+      order: 4,
+      text: 'Lên kế hoạch bảo trì thiết bị KTECH ngoài giờ.',
+      priority: 'Trung bình',
+      badgeClass: 'bg-[#431407] text-[#fb923c] border border-[#c2410c]'
+    },
+    {
+      order: 5,
+      text: 'Tăng Prebuild cho mã hàng A để giảm áp lực.',
+      priority: 'Trung bình',
+      badgeClass: 'bg-[#431407] text-[#fb923c] border border-[#c2410c]'
+    },
+    {
+      order: 6,
+      text: 'Theo dõi sát 3 TO có nguy cơ trễ trong 3 ngày tới.',
+      priority: 'Thấp',
+      badgeClass: 'bg-[#042f2e] text-[#2dd4bf] border border-[#0f766e]'
+    }
+  ];
+
+  const handleTriggerAction = (act: typeof actionList[0]) => {
     operationsService.createTaskFromAIAction(
-      action.text,
-      action.priority,
-      action.relatedVendorId
+      act.text,
+      act.priority as any,
+      'v-daal'
     );
-    setAiActions(prev =>
-      prev.map(a => (a.id === action.id ? { ...a, status: 'in_progress' } : a))
-    );
-    setActionSuccessMsg(`Đã tạo nhiệm vụ điều hành: "${action.text}"`);
-    setTimeout(() => setActionSuccessMsg(null), 4000);
-  };
-
-  // Node Icon Mapping
-  const getNodeIcon = (id: string) => {
-    switch (id) {
-      case 'node-plan': return Calendar;
-      case 'node-prebuild': return Layers;
-      case 'node-material': return Package;
-      case 'node-hr': return Users;
-      case 'node-equipment': return Cog;
-      case 'node-qc': return ShieldCheck;
-      case 'node-rework': return RotateCcw;
-      case 'node-output': return BarChart3;
-      case 'node-external': return AlertOctagon;
-      case 'node-delivery': return Truck;
-      default: return Info;
-    }
-  };
-
-  // Node Color Theme
-  const getNodeBorder = (node: CausalNode) => {
-    if (selectedNode?.id === node.id) {
-      return 'border-cyan-300 ring-2 ring-cyan-400/80 shadow-[0_0_20px_rgba(6,182,212,0.4)]';
-    }
-    if (node.status === 'danger') return 'border-rose-600/80 hover:border-rose-400';
-    if (node.status === 'warning') return 'border-amber-500/80 hover:border-amber-400';
-    return 'border-emerald-500/80 hover:border-emerald-400';
+    setActionSuccessMsg(`Đã phát lệnh điều hành: "${act.text}"`);
+    setTimeout(() => setActionSuccessMsg(null), 3500);
   };
 
   return (
-    <div className="p-3 lg:p-5 space-y-4">
+    <div className="p-3 lg:p-4 space-y-3.5 bg-[#040b17] min-h-screen text-slate-100 font-sans">
       {actionSuccessMsg && (
-        <div className="p-3 bg-emerald-950/80 border border-emerald-500 text-emerald-200 text-xs rounded-xl flex items-center justify-between animate-fadeIn">
+        <div className="p-3 bg-emerald-950/90 border border-emerald-500 text-emerald-200 text-xs rounded-xl flex items-center justify-between shadow-lg animate-fadeIn">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>{actionSuccessMsg}</span>
+            <span className="font-semibold">{actionSuccessMsg}</span>
           </div>
           <button onClick={() => setActionSuccessMsg(null)} className="text-emerald-400 hover:text-white">
             <X className="w-4 h-4" />
@@ -105,419 +360,502 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
         </div>
       )}
 
-      {/* TOP SECTION: Causal Network Diagram (Left) + AI Insight (Right) */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-        {/* Causal Network Diagram Canvas (7 cols on 2xl, 8 cols on xl) */}
-        <div className="xl:col-span-8 rounded-2xl bg-[#090f1d] border border-slate-800 p-4 relative overflow-hidden flex flex-col">
+      {/* TOP SECTION: Causal Network Diagram (Left ~68%) + AI Insight (Right ~32%) */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-3.5">
+        {/* Causal Network Diagram Canvas (xl:col-span-8) */}
+        <div className="xl:col-span-8 rounded-2xl bg-[#061224] border border-[#142c4c] p-4 flex flex-col justify-between shadow-2xl relative overflow-hidden">
           {/* Header of Causal Network */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#142c4c]/80">
             <div>
-              <div className="text-sm lg:text-base font-extrabold text-white tracking-wide flex items-center gap-2">
-                <span>{t.causalTitle}</span>
-                {selectedVendor && (
-                  <span className="text-xs px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-700">
-                    {selectedVendor.code}
-                  </span>
-                )}
-              </div>
-              <div className="text-xs text-slate-400 mt-0.5">
-                {t.causalSubtitle}
+              <h2 className="text-sm lg:text-base font-black text-white tracking-wide uppercase font-sans">
+                SƠ ĐỒ NHÂN QUẢ ẢNH HƯỞNG ĐẾN SẢN LƯỢNG
+              </h2>
+              <div className="text-xs text-[#00e5ff] font-medium mt-0.5">
+                Mối quan hệ giữa các yếu tố từ kế hoạch → sản xuất → giao hàng (Causal Network)
               </div>
             </div>
 
-            {/* Filter buttons & Explain modal button */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5 text-xs">
+            {/* Filter Buttons & Explain Model */}
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center bg-[#07172e] border border-[#163359] rounded-lg p-0.5 text-xs">
                 <button
                   onClick={() => {
                     setActiveFilter('all');
                     onSelectVendor(null);
                   }}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
                     activeFilter === 'all'
-                      ? 'bg-cyan-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-[#0070d8] text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  {t.filterAllGroup}
+                  Toàn Group
                 </button>
                 <button
                   onClick={() => setActiveFilter('vendor')}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
                     activeFilter === 'vendor'
-                      ? 'bg-cyan-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-[#0070d8] text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  {t.filterByVendor}
+                  Từng nhà gia công
                 </button>
                 <button
                   onClick={() => setActiveFilter('sku')}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
                     activeFilter === 'sku'
-                      ? 'bg-cyan-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-[#0070d8] text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  {t.filterBySKU}
+                  Từng mã hàng
                 </button>
               </div>
 
               <button
                 onClick={() => setShowExplainModal(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-cyan-950/70 border border-cyan-700/60 text-cyan-300 hover:bg-cyan-900/80 text-xs font-semibold transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#071d33] border border-cyan-400/70 text-cyan-300 hover:bg-cyan-900/60 text-xs font-bold shadow-[0_0_12px_rgba(6,182,212,0.25)] transition-all"
               >
                 <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                <span>{t.explainModel}</span>
+                <span>Giải thích</span>
               </button>
             </div>
           </div>
 
-          {/* Legend Strip */}
-          <div className="flex items-center gap-5 py-2 text-[11px] text-slate-400 border-b border-slate-800/40">
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-0.5 bg-emerald-400 inline-block" />
-              <ArrowRight className="w-3 h-3 text-emerald-400 -ml-1" />
-              <span>{t.positiveImpact}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-0.5 bg-rose-500 inline-block" />
-              <ArrowRight className="w-3 h-3 text-rose-500 -ml-1" />
-              <span>{t.negativeImpact}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-0.5 bg-slate-500 inline-block border-t border-dashed" />
-              <span>{t.relationship}</span>
-            </div>
-            <span className="text-slate-500 ml-auto text-[10px] hidden sm:inline">
-              * Nhấp vào nút để xem phân tích chi tiết & hành động
-            </span>
-          </div>
-
-          {/* Causal Network Interactive Visual Layout */}
-          <div className="relative min-h-[500px] w-full mt-2 rounded-xl bg-[#060b14]/90 p-4 border border-slate-900 overflow-x-auto flex items-center justify-center">
-            {/* SVG Connecting Paths with Impact Weights */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-              <defs>
-                <linearGradient id="gradPositive" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.8" />
-                  <stop offset="100%" stopColor="#059669" stopOpacity="0.3" />
-                </linearGradient>
-                <linearGradient id="gradNegative" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#ef4444" stopOpacity="0.8" />
-                  <stop offset="100%" stopColor="#b91c1c" stopOpacity="0.3" />
-                </linearGradient>
-                <linearGradient id="gradNeutral" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#64748b" stopOpacity="0.6" />
-                  <stop offset="100%" stopColor="#334155" stopOpacity="0.2" />
-                </linearGradient>
-              </defs>
-
-              {/* Connecting curved lines between functional nodes */}
-              <path d="M 220 70 C 270 70, 320 70, 380 70" stroke="#f43f5e" strokeWidth="2" fill="none" strokeDasharray="3 3" />
-              <path d="M 120 120 C 120 150, 120 170, 120 200" stroke="#10b981" strokeWidth="2" fill="none" />
-              <path d="M 220 230 C 280 230, 300 230, 360 230" stroke="#10b981" strokeWidth="2.5" fill="none" />
-              <path d="M 460 230 C 500 230, 520 230, 560 230" stroke="#06b6d4" strokeWidth="3" fill="none" />
-              <path d="M 680 230 C 720 230, 750 230, 790 230" stroke="#10b981" strokeWidth="2.5" fill="none" />
-              
-              <path d="M 420 115 C 420 150, 420 180, 420 200" stroke="#ef4444" strokeWidth="2.5" fill="none" />
-              <path d="M 480 70 C 530 70, 560 70, 600 70" stroke="#f97316" strokeWidth="2" fill="none" />
-              <path d="M 640 115 C 640 150, 640 180, 640 200" stroke="#f97316" strokeWidth="2.5" fill="none" />
-
-              <path d="M 220 370 C 280 370, 300 370, 360 370" stroke="#10b981" strokeWidth="2" fill="none" />
-              <path d="M 460 370 C 500 370, 520 300, 570 260" stroke="#10b981" strokeWidth="3" fill="none" />
-              <path d="M 620 350 C 620 310, 620 280, 620 260" stroke="#ef4444" strokeWidth="2" fill="none" />
-            </svg>
-
-            {/* Grid of Causal Network Nodes matching reference layout */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 w-full z-10 relative">
-              {/* Column 1: Kế hoạch, Prebuild, Kho vật liệu */}
-              <div className="space-y-4">
-                {/* Node: Kế hoạch sản xuất */}
-                {renderNodeCard(
-                  INITIAL_CAUSAL_NODES[0],
-                  'border-cyan-500/60 bg-[#0d1627]',
-                  'text-cyan-400',
-                  '0.6 →'
-                )}
-
-                {/* Node: Prebuild */}
-                {renderNodeCard(
-                  INITIAL_CAUSAL_NODES[1],
-                  'border-emerald-500/60 bg-[#091f1a]',
-                  'text-emerald-400',
-                  '0.4 →'
-                )}
-
-                {/* Node: Kho vật liệu */}
-                {renderNodeCard(
-                  INITIAL_CAUSAL_NODES[2],
-                  'border-rose-500/80 bg-[#241117]',
-                  'text-rose-400',
-                  '0.9 !!'
-                )}
-              </div>
-
-              {/* Column 2: Chất lượng, Nhân lực, Thiết bị */}
-              <div className="space-y-4">
-                {/* Node: Chất lượng QC */}
-                {renderNodeCard(
-                  INITIAL_CAUSAL_NODES[5],
-                  'border-rose-500/80 bg-[#251016]',
-                  'text-rose-400',
-                  '0.8'
-                )}
-
-                {/* Node: Nhân lực */}
-                {renderNodeCard(
-                  INITIAL_CAUSAL_NODES[3],
-                  'border-purple-500/60 bg-[#1b1227]',
-                  'text-purple-400',
-                  '0.9 →'
-                )}
-
-                {/* Node: Thiết bị */}
-                {renderNodeCard(
-                  INITIAL_CAUSAL_NODES[4],
-                  'border-amber-500/70 bg-[#241a10]',
-                  'text-amber-400',
-                  '0.8'
-                )}
-              </div>
-
-              {/* Column 3: Rework, Sản lượng thực tế, Yếu tố bên ngoài */}
-              <div className="space-y-4">
-                {/* Node: Rework */}
-                {renderNodeCard(
-                  INITIAL_CAUSAL_NODES[6],
-                  'border-orange-500/70 bg-[#27150c]',
-                  'text-orange-400',
-                  '0.6'
-                )}
-
-                {/* Node: Sản lượng thực tế (The Central Core Node) */}
-                <div
-                  onClick={() => setSelectedNode(INITIAL_CAUSAL_NODES[7])}
-                  className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer relative overflow-hidden group shadow-xl ${
-                    selectedNode?.id === 'node-output'
-                      ? 'border-cyan-300 bg-gradient-to-br from-cyan-950/90 via-blue-950 to-slate-900 ring-2 ring-cyan-400 shadow-[0_0_25px_rgba(6,182,212,0.4)]'
-                      : 'border-cyan-500/80 bg-gradient-to-br from-blue-950/80 to-slate-950 hover:border-cyan-300'
+          {/* Quick Filter Selection Bar (Active when vendor or sku tab is selected) */}
+          {activeFilter === 'vendor' && (
+            <div className="flex items-center gap-2 py-2 px-3 bg-[#081730] border-b border-[#142c4c] text-xs overflow-x-auto">
+              <span className="text-slate-400 text-[11px] font-semibold shrink-0">Chọn lọc Nhà gia công:</span>
+              <button
+                onClick={() => onSelectVendor(null)}
+                className={`px-2 py-1 rounded text-[11px] font-bold ${!selectedVendorId ? 'bg-cyan-500 text-slate-950 font-black' : 'bg-[#0c1f38] text-slate-300'}`}
+              >
+                Tất cả (7 nhà)
+              </button>
+              {vendors.map(v => (
+                <button
+                  key={v.id}
+                  onClick={() => onSelectVendor(v.id === selectedVendorId ? null : v.id)}
+                  className={`px-2 py-1 rounded text-[11px] font-bold transition-colors ${
+                    selectedVendorId === v.id
+                      ? 'bg-[#0070d8] text-white shadow-md'
+                      : 'bg-[#0c1f38] text-slate-300 hover:text-white'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-lg bg-cyan-500/20 text-cyan-400">
-                        <BarChart3 className="w-4 h-4" />
-                      </div>
-                      <span className="text-xs font-black text-cyan-200 tracking-wider">
-                        SẢN LƯỢNG THỰC TẾ
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-700">
-                      Thiếu -3,800 pcs
-                    </span>
-                  </div>
+                  {v.code}
+                </button>
+              ))}
+            </div>
+          )}
 
-                  <div className="space-y-1 text-[11px] text-slate-300">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Đạt được:</span>
-                      <span className="font-mono font-bold text-white">14,200 pcs</span>
+          {activeFilter === 'sku' && (
+            <div className="flex items-center gap-2 py-2 px-3 bg-[#081730] border-b border-[#142c4c] text-xs overflow-x-auto">
+              <span className="text-slate-400 text-[11px] font-semibold shrink-0">Chọn mã linh kiện / SKU:</span>
+              {['PCB-MAIN-V17 (Ưu tiên)', 'MOD-SENSOR-8B', 'POWER-CTRL-X1', 'SUB-DISPLAY-A2'].map((sku, idx) => (
+                <span
+                  key={sku}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-bold cursor-pointer transition-colors ${
+                    idx === 0 ? 'bg-[#0070d8] text-white shadow-sm' : 'bg-[#0c1f38] text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {sku}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Legend Strip */}
+          <div className="flex items-center gap-6 py-2 text-[11px] text-slate-300 border-b border-[#142c4c]/40 font-medium">
+            <div className="flex items-center gap-1.5">
+              <span className="w-4 h-0.5 bg-[#10b981] inline-block" />
+              <ArrowRight className="w-3 h-3 text-[#10b981] -ml-1.5" />
+              <span>Ảnh hưởng tích cực</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-4 h-0.5 bg-[#f43f5e] inline-block" />
+              <ArrowRight className="w-3 h-3 text-[#f43f5e] -ml-1.5" />
+              <span>Ảnh hưởng tiêu cực</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-4 h-0.5 bg-slate-400 inline-block border-t border-dashed" />
+              <span>Mối liên hệ</span>
+            </div>
+          </div>
+
+          {/* Causal Network Interactive 2D Layout Canvas */}
+          <div className="relative min-h-[460px] w-full mt-2 rounded-xl bg-[#040e1c] p-3 border border-[#112642] overflow-x-auto select-none">
+            <div className="relative w-[860px] min-w-[860px] min-h-[440px]">
+              {/* SVG Connecting Paths with Impact Weights matching Reference Coordinates */}
+              <svg className="absolute inset-0 w-[860px] h-[440px] pointer-events-none z-0">
+                {/* Path 1: Plan -> QC (0.6, Green) */}
+                <path d="M 203 52 C 211 52, 211 52, 219 52" stroke="#10b981" strokeWidth="2.5" fill="none" />
+                {/* Path 2: Plan -> Prebuild (0.4, Cyan) */}
+                <path d="M 101 125 L 101 142" stroke="#00e5ff" strokeWidth="2.5" fill="none" />
+                {/* Path 3: Prebuild -> HR (0.7, Cyan) */}
+                <path d="M 203 194 C 211 194, 211 194, 219 194" stroke="#00e5ff" strokeWidth="2.5" fill="none" />
+                {/* Path 4: QC -> Rework (0.8, Red) */}
+                <path d="M 422 52 C 430 52, 430 52, 438 52" stroke="#f43f5e" strokeWidth="2.5" fill="none" />
+                {/* Path 5: QC -> HR (0.9, Red) */}
+                <path d="M 315 125 L 315 142" stroke="#f43f5e" strokeWidth="3" fill="none" />
+                {/* Path 6: QC -> Output (0.5, Red) */}
+                <path d="M 422 95 C 430 115, 430 150, 438 175" stroke="#f43f5e" strokeWidth="2.5" fill="none" />
+                {/* Path 7: Rework -> Output (0.6, Orange) */}
+                <path d="M 540 125 L 540 142" stroke="#f59e0b" strokeWidth="2.5" fill="none" />
+                {/* Path 8: Rework -> Delivery (0.8, Green) */}
+                <path d="M 641 60 C 650 90, 650 150, 657 175" stroke="#10b981" strokeWidth="2.5" fill="none" />
+                {/* Path 9: HR -> Output (0.9, Red) */}
+                <path d="M 422 194 C 430 194, 430 194, 438 194" stroke="#f43f5e" strokeWidth="3.5" fill="none" />
+                {/* Path 10: HR -> QC (0.6, Green) */}
+                <path d="M 335 142 L 335 125" stroke="#10b981" strokeWidth="2" fill="none" />
+                {/* Path 11: Material -> Prebuild (0.4, Cyan) */}
+                <path d="M 101 284 L 101 268" stroke="#00e5ff" strokeWidth="2.5" fill="none" />
+                {/* Path 12: Material -> HR (0.4, Orange) */}
+                <path d="M 203 330 C 212 300, 212 250, 219 220" stroke="#f59e0b" strokeWidth="2" fill="none" />
+                {/* Path 13: Material -> Equipment (0.5, Cyan) */}
+                <path d="M 203 355 C 211 355, 211 355, 219 355" stroke="#00e5ff" strokeWidth="2" fill="none" />
+                {/* Path 14: Equipment -> Output (0.8, Orange) */}
+                <path d="M 422 330 C 430 300, 430 260, 438 235" stroke="#f59e0b" strokeWidth="2.5" fill="none" />
+                {/* Path 15: Equipment -> External (0.5, Gray dashed) */}
+                <path d="M 422 360 C 430 360, 430 360, 438 360" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 3" fill="none" />
+                {/* Path 16: External -> Output (0.5, Green) */}
+                <path d="M 540 297 L 540 280" stroke="#10b981" strokeWidth="2" fill="none" />
+                {/* Path 17: Output -> Delivery (0.5, Green) */}
+                <path d="M 641 194 C 649 194, 649 194, 657 194" stroke="#10b981" strokeWidth="3" fill="none" />
+              </svg>
+
+              {/* Connecting Weight Value Badges matching Screenshot */}
+              <div className="absolute top-[41px] left-[201px] z-20 w-5 h-5 rounded-full bg-[#071f1a] border border-[#10b981] text-[#10b981] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.6</div>
+              <div className="absolute top-[125px] left-[91px] z-20 w-5 h-5 rounded-full bg-[#0c2a4d] border border-[#00e5ff] text-[#00e5ff] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.4</div>
+              <div className="absolute top-[183px] left-[201px] z-20 w-5 h-5 rounded-full bg-[#0c2a4d] border border-[#00e5ff] text-[#00e5ff] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.7</div>
+              <div className="absolute top-[41px] left-[420px] z-20 w-5 h-5 rounded-full bg-[#3d0d16] border border-[#f43f5e] text-[#f43f5e] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.8</div>
+              <div className="absolute top-[125px] left-[305px] z-20 w-5 h-5 rounded-full bg-[#3d0d16] border border-[#f43f5e] text-[#f43f5e] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.9</div>
+              <div className="absolute top-[125px] left-[420px] z-20 w-5 h-5 rounded-full bg-[#3d0d16] border border-[#f43f5e] text-[#f43f5e] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.5</div>
+              <div className="absolute top-[125px] left-[530px] z-20 w-5 h-5 rounded-full bg-[#381e09] border border-[#f59e0b] text-[#f59e0b] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.6</div>
+              <div className="absolute top-[105px] left-[641px] z-20 w-5 h-5 rounded-full bg-[#071f1a] border border-[#10b981] text-[#10b981] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.8</div>
+              <div className="absolute top-[183px] left-[420px] z-20 w-5 h-5 rounded-full bg-[#3d0d16] border border-[#f43f5e] text-[#f43f5e] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.9</div>
+              <div className="absolute top-[125px] left-[330px] z-20 w-5 h-5 rounded-full bg-[#071f1a] border border-[#10b981] text-[#10b981] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.6</div>
+              <div className="absolute top-[267px] left-[91px] z-20 w-5 h-5 rounded-full bg-[#0c2a4d] border border-[#00e5ff] text-[#00e5ff] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.4</div>
+              <div className="absolute top-[267px] left-[201px] z-20 w-5 h-5 rounded-full bg-[#381e09] border border-[#f59e0b] text-[#f59e0b] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.4</div>
+              <div className="absolute top-[344px] left-[201px] z-20 w-5 h-5 rounded-full bg-[#0c2a4d] border border-[#00e5ff] text-[#00e5ff] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.5</div>
+              <div className="absolute top-[270px] left-[420px] z-20 w-5 h-5 rounded-full bg-[#381e09] border border-[#f59e0b] text-[#f59e0b] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.8</div>
+              <div className="absolute top-[349px] left-[420px] z-20 w-5 h-5 rounded-full bg-[#1b2533] border border-[#94a3b8] text-slate-300 text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.5</div>
+              <div className="absolute top-[278px] left-[530px] z-20 w-5 h-5 rounded-full bg-[#071f1a] border border-[#10b981] text-[#10b981] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.5</div>
+              <div className="absolute top-[183px] left-[641px] z-20 w-5 h-5 rounded-full bg-[#071f1a] border border-[#10b981] text-[#10b981] text-[10px] font-bold font-mono flex items-center justify-center shadow-sm">0.5</div>
+
+              {/* 4 Columns of Nodes in 2D Space */}
+              <div className="grid grid-cols-4 gap-4 w-full z-10 relative">
+                {/* Column 1: Plan, Prebuild, Material */}
+                <div className="space-y-3">
+                {causalNodes.filter(n => n.col === 1).map(node => {
+                  const Icon = node.icon;
+                  return (
+                    <div
+                      key={node.id}
+                      className={`p-2.5 rounded-xl border ${node.themeColor} shadow-md transition-all hover:scale-[1.02] cursor-pointer`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-6 h-6 rounded-lg ${node.iconBg} flex items-center justify-center shrink-0 shadow-sm`}>
+                          <Icon className={`w-3.5 h-3.5 ${node.iconColor}`} />
+                        </div>
+                        <span className="text-[11px] font-black text-white tracking-wide">
+                          {node.title}
+                        </span>
+                      </div>
+                      <div className="space-y-1 text-[10px] text-slate-300 pl-1 font-medium">
+                        {node.bullets.map((b, i) => (
+                          <div key={i} className="flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${node.bulletDot}`} />
+                            <span className="truncate">{b}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Tỷ lệ hoàn thành:</span>
-                      <span className="font-mono font-bold text-amber-400">78.8%</span>
+                  );
+                })}
+              </div>
+
+              {/* Column 2: QC, HR, Equipment */}
+              <div className="space-y-3">
+                {causalNodes.filter(n => n.col === 2).map(node => {
+                  const Icon = node.icon;
+                  return (
+                    <div
+                      key={node.id}
+                      className={`p-2.5 rounded-xl border ${node.themeColor} shadow-md transition-all hover:scale-[1.02] cursor-pointer`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-6 h-6 rounded-lg ${node.iconBg} flex items-center justify-center shrink-0 shadow-sm`}>
+                          <Icon className={`w-3.5 h-3.5 ${node.iconColor}`} />
+                        </div>
+                        <span className="text-[11px] font-black text-white tracking-wide">
+                          {node.title}
+                        </span>
+                      </div>
+                      <div className="space-y-1 text-[10px] text-slate-300 pl-1 font-medium">
+                        {node.bullets.map((b, i) => (
+                          <div key={i} className="flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${node.bulletDot}`} />
+                            <span className="truncate">{b}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Năng suất:</span>
-                      <span className="font-mono text-cyan-300">1,775 pcs/giờ</span>
+                  );
+                })}
+              </div>
+
+              {/* Column 3: Rework, Center Hub (Actual Output), External Factors */}
+              <div className="space-y-3">
+                {/* Node: Rework */}
+                {(() => {
+                  const node = causalNodes.find(n => n.id === 'node-rework')!;
+                  const Icon = node.icon;
+                  return (
+                    <div className={`p-2.5 rounded-xl border ${node.themeColor} shadow-md transition-all hover:scale-[1.02] cursor-pointer`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-6 h-6 rounded-lg ${node.iconBg} flex items-center justify-center shrink-0 shadow-sm`}>
+                          <Icon className={`w-3.5 h-3.5 ${node.iconColor}`} />
+                        </div>
+                        <span className="text-[11px] font-black text-white tracking-wide">
+                          {node.title}
+                        </span>
+                      </div>
+                      <div className="space-y-1 text-[10px] text-slate-300 pl-1 font-medium">
+                        {node.bullets.map((b, i) => (
+                          <div key={i} className="flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${node.bulletDot}`} />
+                            <span className="truncate">{b}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  );
+                })()}
+
+                {/* Node: Center Hub (Sản lượng thực tế) */}
+                {(() => {
+                  const node = causalNodes.find(n => n.id === 'node-output')!;
+                  const Icon = node.icon;
+                  return (
+                    <div className={`p-3 rounded-2xl border-2 ${node.themeColor} transition-all hover:scale-[1.03] cursor-pointer`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-7 h-7 rounded-xl ${node.iconBg} flex items-center justify-center shrink-0 shadow-[0_0_15px_#0070d8]`}>
+                          <Icon className="w-4 h-4 text-white" />
+                        </div>
+                        <span className="text-xs font-black text-white tracking-wider">
+                          {node.title}
+                        </span>
+                      </div>
+                      <div className="space-y-1.5 text-[10.5px] text-slate-200 pl-1 font-semibold">
+                        {node.bullets.map((b, i) => (
+                          <div key={i} className="flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${node.bulletDot} shadow-[0_0_6px_#00e5ff]`} />
+                            <span className="truncate">{b}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Node: Yếu tố bên ngoài */}
-                {renderNodeCard(
-                  INITIAL_CAUSAL_NODES[8],
-                  'border-red-900/60 bg-[#1e0d11]',
-                  'text-red-400',
-                  '0.5'
-                )}
+                {(() => {
+                  const node = causalNodes.find(n => n.id === 'node-external')!;
+                  const Icon = node.icon;
+                  return (
+                    <div className={`p-2.5 rounded-xl border ${node.themeColor} shadow-md transition-all hover:scale-[1.02] cursor-pointer`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-6 h-6 rounded-lg ${node.iconBg} flex items-center justify-center shrink-0 shadow-sm`}>
+                          <Icon className={`w-3.5 h-3.5 ${node.iconColor}`} />
+                        </div>
+                        <span className="text-[11px] font-black text-white tracking-wide">
+                          {node.title}
+                        </span>
+                      </div>
+                      <div className="space-y-1 text-[10px] text-slate-300 pl-1 font-medium">
+                        {node.bullets.map((b, i) => (
+                          <div key={i} className="flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${node.bulletDot}`} />
+                            <span className="truncate">{b}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Column 4: Giao hàng (TO / OTD) */}
-              <div className="space-y-4">
-                {/* Node: Giao hàng TO / OTD */}
-                {renderNodeCard(
-                  INITIAL_CAUSAL_NODES[9],
-                  'border-emerald-500/80 bg-[#0c231c]',
-                  'text-emerald-400',
-                  '0.8'
-                )}
-
-                {/* Quick Info Box on Selected Node */}
-                {selectedNode ? (
-                  <div className="p-3 rounded-xl bg-slate-900/90 border border-cyan-500/40 text-xs space-y-2 animate-fadeIn">
-                    <div className="flex items-center justify-between font-bold text-cyan-300">
-                      <span>Chi tiết: {selectedNode.label}</span>
-                      <button onClick={() => setSelectedNode(null)} className="text-slate-400 hover:text-white">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <div className="text-[11px] text-slate-300 space-y-1">
-                      {selectedNode.bulletPoints.map((bp, i) => (
-                        <div key={i} className="flex items-start gap-1.5">
-                          <span className="text-cyan-400">▪</span>
-                          <span>{bp}</span>
+              <div className="space-y-3 pt-28">
+                {(() => {
+                  const node = causalNodes.find(n => n.id === 'node-delivery')!;
+                  const Icon = node.icon;
+                  return (
+                    <div className={`p-3 rounded-xl border ${node.themeColor} shadow-md transition-all hover:scale-[1.02] cursor-pointer`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-6 h-6 rounded-lg ${node.iconBg} flex items-center justify-center shrink-0 shadow-sm`}>
+                          <Icon className={`w-3.5 h-3.5 ${node.iconColor}`} />
                         </div>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => onNavigateToTab(mapNodeToModule(selectedNode.id))}
-                      className="w-full mt-2 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
-                    >
-                      <span>Mở mô-đun chuyên trách</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-800 text-[11px] text-slate-500 text-center">
-                    Nhấp vào bất kỳ khối nào trên sơ đồ để xem phân tích tác động và mở quy trình xử lý.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* AI INSIGHT - Ranked Bottlenecks Panel (Right side: 4 cols on xl/2xl) */}
-        <div className="xl:col-span-4 rounded-2xl bg-[#090f1d] border border-slate-800 p-4 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-cyan-500/20 text-cyan-400">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-sm font-extrabold text-white tracking-wide">
-                    {t.aiInsightTitle}
-                  </div>
-                  <div className="text-[11px] text-slate-400">
-                    Xếp hạng tác động theo thời gian thực
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Sub Tabs: Ảnh hưởng chính | Chuỗi nguyên nhân */}
-            <div className="flex items-center gap-1 my-3 p-1 bg-slate-900/90 rounded-xl border border-slate-800 text-xs font-medium">
-              <button
-                onClick={() => setActiveInsightTab('main')}
-                className={`flex-1 py-1.5 rounded-lg transition-colors ${
-                  activeInsightTab === 'main'
-                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {t.mainImpactTab}
-              </button>
-              <button
-                onClick={() => setActiveInsightTab('chains')}
-                className={`flex-1 py-1.5 rounded-lg transition-colors ${
-                  activeInsightTab === 'chains'
-                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {t.causalChainTab}
-              </button>
-            </div>
-
-            {/* List of 6 Ranked AI Insights */}
-            <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
-              {INITIAL_AI_INSIGHTS.map((item, idx) => (
-                <div
-                  key={item.id}
-                  onClick={() => {
-                    if (item.vendorId) onSelectVendor(item.vendorId);
-                  }}
-                  className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/60 transition-all cursor-pointer group"
-                >
-                  <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 flex items-center justify-center text-xs font-bold font-mono">
-                        {item.rank}
-                      </span>
-                      <span className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors">
-                        {item.title}
-                      </span>
-                    </div>
-                    <span className="text-xs font-mono font-bold px-1.5 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-800">
-                      {item.impactScore.toFixed(2)}
-                    </span>
-                  </div>
-
-                  <p className="text-[11px] text-slate-300 line-clamp-2 leading-relaxed">
-                    {item.description}
-                  </p>
-
-                  {activeInsightTab === 'chains' && (
-                    <div className="mt-2 pt-2 border-t border-slate-800/60 text-[10px] space-y-1">
-                      <div className="text-amber-300">
-                        <span className="font-semibold text-slate-400">Nguyên nhân gốc: </span>
-                        {item.rootCause}
+                        <span className="text-[11px] font-black text-white tracking-wide">
+                          {node.title}
+                        </span>
                       </div>
-                      <div className="text-cyan-300">
-                        <span className="font-semibold text-slate-400">Đề xuất: </span>
-                        {item.proposedAction}
+                      <div className="space-y-1 text-[10px] text-slate-300 pl-1 font-medium">
+                        {node.bullets.map((b, i) => (
+                          <div key={i} className="flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${node.bulletDot}`} />
+                            <span className="truncate">{b}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  )}
-
-                  <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400">
-                    <span>Nguồn: {item.dataSource}</span>
-                    <span className="text-cyan-400 font-mono">Tin cậy: {item.confidence}%</span>
-                  </div>
-                </div>
-              ))}
+                  );
+                })()}
+              </div>
             </div>
-          </div>
-
-          <div className="mt-3 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
-            <span className="italic">{t.humanApprovalNotice}</span>
           </div>
         </div>
       </div>
 
-      {/* BOTTOM SECTION: 3 Columns matching reference UI */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Bottom Left: Phân tích đóng góp (Driver Analysis) */}
-        <div className="rounded-2xl bg-[#090f1d] border border-slate-800 p-4">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-3">
-            <div className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-cyan-400" />
-              <span>{t.driverAnalysisTitle}</span>
+      {/* AI INSIGHT - Ranked Bottlenecks Panel (xl:col-span-4) */}
+      <div className="xl:col-span-4 rounded-2xl bg-[#061224] border border-[#142c4c] p-4 flex flex-col justify-between shadow-2xl">
+        <div>
+          <div className="flex items-center gap-2.5 pb-3 border-b border-[#142c4c]">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0c2a4d] to-[#06162d] border border-cyan-400/60 flex items-center justify-center text-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.3)]">
+              <svg className="w-4 h-4 stroke-cyan-400 fill-none" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 2A2.5 2.5 0 0 0 7 4.5v.08A3.5 3.5 0 0 0 4.5 8c0 .35.05.69.15 1A3.5 3.5 0 0 0 3 12c0 1.25.66 2.35 1.65 2.95A3.5 3.5 0 0 0 7 19.5v.08A2.5 2.5 0 0 0 9.5 22h.5a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-.5zM14.5 2a2.5 2.5 0 0 1 2.5 2.5v.08A3.5 3.5 0 0 1 19.5 8c0 .35-.05.69-.15 1A3.5 3.5 0 0 1 21 12c0 1.25-.66 2.35-1.65 2.95A3.5 3.5 0 0 1 17 19.5v.08A2.5 2.5 0 0 1 14.5 22h-.5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h.5z" />
+              </svg>
             </div>
-            <span className="text-[10px] text-slate-400 font-mono">100% Total</span>
+            <h3 className="text-sm font-extrabold text-white tracking-wide uppercase">
+              AI INSIGHT - PHÂN TÍCH NHÂN QUẢ
+            </h3>
+          </div>
+
+          {/* Sub Tabs: Ảnh hưởng chính | Chuỗi nguyên nhân */}
+          <div className="grid grid-cols-2 gap-1.5 my-3 bg-[#081730] p-1 rounded-xl border border-[#163359]">
+            <button
+              onClick={() => setActiveInsightTab('main')}
+              className={`py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeInsightTab === 'main'
+                  ? 'bg-[#0070d8] text-white shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Ảnh hưởng chính
+            </button>
+            <button
+              onClick={() => setActiveInsightTab('chains')}
+              className={`py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeInsightTab === 'chains'
+                  ? 'bg-[#0070d8] text-white shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Chuỗi nguyên nhân
+            </button>
+          </div>
+
+          {/* List of 6 Ranked AI Insights OR Cause Chains */}
+          <div className="space-y-2.5">
+            {activeInsightTab === 'main' ? (
+              aiInsights.map(item => (
+                <div
+                  key={item.rank}
+                  onClick={() => {
+                    if (item.vendorId) onSelectVendor(item.vendorId);
+                  }}
+                  className="p-2.5 rounded-xl bg-[#081528] border border-[#142c4c] hover:border-cyan-500/50 transition-all cursor-pointer group shadow-sm"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-5 h-5 rounded-full ${item.circleBg} text-white flex items-center justify-center text-xs font-black font-mono shadow-sm`}>
+                        {item.rank}
+                      </span>
+                      <span className="text-xs font-black text-white group-hover:text-cyan-300 transition-colors">
+                        {item.title}
+                      </span>
+                    </div>
+                    <span className={`text-[11px] font-bold font-mono px-2 py-0.5 rounded-md ${item.badgeColor}`}>
+                      {item.badge}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-slate-300 leading-snug pl-7">
+                    {item.description}
+                  </p>
+                </div>
+              ))
+            ) : (
+              aiChains.map(chain => (
+                <div
+                  key={chain.id}
+                  onClick={() => {
+                    if (chain.vendorId) onSelectVendor(chain.vendorId);
+                  }}
+                  className="p-2.5 rounded-xl bg-[#081528] border border-[#142c4c] hover:border-cyan-500/50 transition-all cursor-pointer group shadow-sm"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-cyan-600 text-white flex items-center justify-center text-xs font-black font-mono shadow-sm">
+                        {chain.id}
+                      </span>
+                      <span className="text-xs font-black text-white group-hover:text-cyan-300 transition-colors truncate">
+                        {chain.source}
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-bold font-mono px-2 py-0.5 rounded-md bg-[#450a0a] text-[#f87171] border border-[#dc2626]/60">
+                      {chain.weight}
+                    </span>
+                  </div>
+                  <div className="pl-7 space-y-1 text-[11px]">
+                    <div className="flex items-center gap-1.5 text-amber-300 font-medium">
+                      <ArrowRight className="w-3 h-3 shrink-0 text-amber-400" />
+                      <span>{chain.impact}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-rose-300 font-bold">
+                      <ArrowRight className="w-3 h-3 shrink-0 text-rose-400" />
+                      <span>{chain.result}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+      </div>
+
+      {/* BOTTOM SECTION: 3 Columns matching Screenshot 100% */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
+        {/* Panel 1: Phân tích đóng góp (Driver Analysis) */}
+        <div className="rounded-2xl bg-[#061224] border border-[#142c4c] p-4 shadow-xl">
+          <div className="pb-2.5 border-b border-[#142c4c] mb-3">
+            <h3 className="text-xs font-black text-white uppercase tracking-wider">
+              PHÂN TÍCH ĐÓNG GÓP (DRIVER ANALYSIS)
+            </h3>
           </div>
 
           <div className="space-y-2.5">
-            {driverData.map((d, i) => {
+            {driverBars.map((d, i) => {
               const Icon = d.icon;
               return (
-                <div key={i} className="text-xs">
-                  <div className="flex items-center justify-between mb-1 text-[11px]">
-                    <div className="flex items-center gap-1.5 text-slate-300">
-                      <Icon className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{d.label}</span>
+                <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2 w-36 shrink-0 text-slate-300 text-[11px] font-semibold">
+                    <Icon className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span className="truncate">{d.label}</span>
+                  </div>
+
+                  <div className="flex-1 flex items-center gap-2">
+                    <div className="flex-1 h-3.5 bg-[#081730] rounded-full overflow-hidden border border-[#142c4c]">
+                      <div
+                        className={`h-full rounded-full ${d.color} shadow-sm`}
+                        style={{ width: `${d.percent * 3.4}%` }}
+                      />
                     </div>
-                    <span className="font-mono font-bold text-white tabular-nums">
+                    <span className="font-mono font-black text-white text-xs w-9 text-right shrink-0">
                       {d.percent}%
                     </span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-                    <div
-                      className={`h-full rounded-full ${d.color}`}
-                      style={{ width: `${d.percent * 2.8}%` }}
-                    />
                   </div>
                 </div>
               );
@@ -525,164 +863,170 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
           </div>
         </div>
 
-        {/* Bottom Center: Kịch bản dự báo sản lượng cuối ngày */}
-        <div className="rounded-2xl bg-[#090f1d] border border-slate-800 p-4 flex flex-col justify-between">
+        {/* Panel 2: Kịch bản dự báo sản lượng cuối ngày */}
+        <div className="rounded-2xl bg-[#061224] border border-[#142c4c] p-4 shadow-xl flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-3">
-              <div className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-1.5">
-                <span>{t.forecastTitle}</span>
+            <div className="flex items-center justify-between pb-2.5 border-b border-[#142c4c] mb-3">
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-xs font-black text-white uppercase tracking-wider">
+                  KỊCH BẢN DỰ BÁO SẢN LƯỢNG CUỐI NGÀY
+                </h3>
                 <Info className="w-3.5 h-3.5 text-slate-400" />
               </div>
             </div>
 
-            {/* Timeline Graphic & Metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
-              <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                <div className="text-[10px] text-slate-400 uppercase font-semibold">
-                  {t.planToday}
-                </div>
-                <div className="text-sm font-bold text-white font-mono mt-0.5">
-                  18,000 <span className="text-xs font-normal text-slate-400">pcs</span>
-                </div>
+            {/* Legend at Top of Chart */}
+            <div className="flex items-center gap-4 text-[11px] text-slate-300 mb-2 font-medium">
+              <div className="flex items-center gap-1">
+                <span className="w-3.5 h-0.5 bg-white inline-block" />
+                <ArrowRight className="w-2.5 h-2.5 text-white -ml-1" />
+                <span>Kế hoạch</span>
               </div>
-
-              <div className="p-2.5 rounded-xl bg-slate-900 border border-amber-900/60">
-                <div className="text-[10px] text-amber-400 uppercase font-semibold">
-                  {t.forecastEndDay}
-                </div>
-                <div className="text-sm font-bold text-amber-300 font-mono mt-0.5">
-                  14,200 <span className="text-xs font-normal text-amber-400">(79%)</span>
-                </div>
+              <div className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-[#0070d8] inline-block" />
+                <span>Thực tế</span>
               </div>
-
-              <div className="p-2.5 rounded-xl bg-slate-900 border border-rose-900/60">
-                <div className="text-[10px] text-rose-400 uppercase font-semibold">
-                  {t.riskShortage}
-                </div>
-                <div className="text-sm font-bold text-rose-400 font-mono mt-0.5">
-                  -3,800 <span className="text-xs font-normal text-rose-400">pcs</span>
-                </div>
+              <div className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-[#f59e0b] inline-block" />
+                <span>Dự báo</span>
               </div>
             </div>
 
-            {/* Hourly Run-chart simulation */}
-            <div className="relative h-32 w-full bg-slate-950 rounded-xl p-3 border border-slate-800/80 flex flex-col justify-between">
-              {/* SVG Curve */}
-              <svg className="w-full h-20" viewBox="0 0 300 80">
-                {/* Target straight trajectory */}
-                <line x1="10" y1="70" x2="290" y2="10" stroke="#64748b" strokeWidth="2" strokeDasharray="4 4" />
-                {/* Actual curve up to current hour (14:00) */}
-                <path d="M 10 70 Q 100 62 170 38" fill="none" stroke="#06b6d4" strokeWidth="2.5" />
-                {/* Forecast projection from 14:00 to 16:00 */}
-                <path d="M 170 38 Q 230 30 290 28" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeDasharray="3 3" />
-                
-                {/* Data points */}
-                <circle cx="170" cy="38" r="4" fill="#06b6d4" stroke="#fff" strokeWidth="1.5" />
-                <circle cx="290" cy="28" r="4" fill="#f59e0b" stroke="#fff" strokeWidth="1.5" />
-              </svg>
+            {/* Graph + KPI Grid layout matching Screenshot 100% */}
+            <div className="grid grid-cols-12 gap-3 items-center">
+              {/* Left: Accurate Area Chart with Axes (col-span-8) */}
+              <div className="col-span-8 relative h-36">
+                <svg className="w-full h-full" viewBox="0 0 240 120">
+                  {/* Grid lines */}
+                  <line x1="30" y1="20" x2="230" y2="20" stroke="#132742" strokeWidth="1" strokeDasharray="2 2" />
+                  <line x1="30" y1="45" x2="230" y2="45" stroke="#132742" strokeWidth="1" strokeDasharray="2 2" />
+                  <line x1="30" y1="70" x2="230" y2="70" stroke="#132742" strokeWidth="1" strokeDasharray="2 2" />
+                  <line x1="30" y1="95" x2="230" y2="95" stroke="#132742" strokeWidth="1" />
 
-              {/* Time tick labels */}
-              <div className="flex justify-between text-[10px] text-slate-400 font-mono pt-1 border-t border-slate-800">
-                <span>08:00</span>
-                <span>10:00</span>
-                <span>12:00</span>
-                <span className="text-cyan-400 font-bold">14:00 (Hiện tại)</span>
-                <span>16:00 (Hết ca)</span>
+                  {/* Y-axis Labels */}
+                  <text x="25" y="23" textAnchor="end" fill="#64748b" fontSize="7" fontFamily="monospace">20,000</text>
+                  <text x="25" y="48" textAnchor="end" fill="#64748b" fontSize="7" fontFamily="monospace">15,000</text>
+                  <text x="25" y="73" textAnchor="end" fill="#64748b" fontSize="7" fontFamily="monospace">10,000</text>
+                  <text x="25" y="98" textAnchor="end" fill="#64748b" fontSize="7" fontFamily="monospace">5,000</text>
+                  <text x="25" y="112" textAnchor="end" fill="#64748b" fontSize="7" fontFamily="monospace">0</text>
+
+                  {/* Shaded Area for Actual */}
+                  <defs>
+                    <linearGradient id="actualAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#0284c7" stopOpacity="0.4" />
+                      <stop offset="100%" stopColor="#0284c7" stopOpacity="0.02" />
+                    </linearGradient>
+                  </defs>
+                  <polygon
+                    points="30,110 30,105 75,95 125,75 175,55 175,110"
+                    fill="url(#actualAreaGrad)"
+                  />
+
+                  {/* White Trajectory Line: Kế hoạch */}
+                  <line x1="30" y1="40" x2="230" y2="25" stroke="#ffffff" strokeWidth="1.5" strokeDasharray="3 3" />
+
+                  {/* Blue Curve: Thực tế */}
+                  <path d="M 30 105 Q 100 85 175 55" fill="none" stroke="#0070d8" strokeWidth="2.5" />
+
+                  {/* Orange Dashed Projection: Dự báo */}
+                  <path d="M 175 55 Q 200 50 230 45" fill="none" stroke="#f59e0b" strokeWidth="2" strokeDasharray="3 2" />
+
+                  {/* Data Points */}
+                  <circle cx="30" cy="105" r="2.5" fill="#0070d8" />
+                  <circle cx="75" cy="95" r="2.5" fill="#0070d8" />
+                  <circle cx="125" cy="75" r="2.5" fill="#0070d8" />
+                  <circle cx="175" cy="55" r="3.5" fill="#00e5ff" stroke="#fff" strokeWidth="1" />
+                  <circle cx="230" cy="45" r="3" fill="#f59e0b" stroke="#fff" strokeWidth="1" />
+
+                  {/* X-axis Labels */}
+                  <text x="30" y="118" textAnchor="middle" fill="#64748b" fontSize="7" fontFamily="monospace">08:00</text>
+                  <text x="75" y="118" textAnchor="middle" fill="#64748b" fontSize="7" fontFamily="monospace">10:00</text>
+                  <text x="125" y="118" textAnchor="middle" fill="#64748b" fontSize="7" fontFamily="monospace">12:00</text>
+                  <text x="175" y="118" textAnchor="middle" fill="#64748b" fontSize="7" fontFamily="monospace">14:00</text>
+                  <text x="230" y="118" textAnchor="middle" fill="#64748b" fontSize="7" fontFamily="monospace">16:00</text>
+                </svg>
+              </div>
+
+              {/* Right: 3 KPI Metrics matching Screenshot (col-span-4) */}
+              <div className="col-span-4 space-y-2 text-right">
+                <div>
+                  <div className="text-[10px] text-slate-400 font-semibold">Kế hoạch hôm nay</div>
+                  <div className="text-sm font-black text-white font-mono leading-tight">
+                    18,000 <span className="text-[10px] text-slate-400 font-sans font-normal">pcs</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] text-slate-400 font-semibold">Dự báo cuối ngày</div>
+                  <div className="text-sm font-black text-[#facc15] font-mono leading-tight">
+                    14,200 <span className="text-[10px] text-[#facc15] font-sans font-normal">pcs (79%)</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] text-slate-400 font-semibold">Nguy cơ thiếu</div>
+                  <div className="text-sm font-black text-[#f43f5e] font-mono leading-tight">
+                    -3,800 <span className="text-[10px] text-[#f43f5e] font-sans font-normal">pcs</span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-
-          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-slate-500" /> Kế hoạch</span>
-              <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-cyan-400" /> Thực tế</span>
-              <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-amber-400" /> Dự báo</span>
-            </div>
-            <button
-              onClick={() => onNavigateToTab('production')}
-              className="text-cyan-400 hover:underline"
-            >
-              Xem chi tiết ca →
-            </button>
           </div>
         </div>
 
-        {/* Bottom Right: Đề xuất hành động (AI) */}
-        <div className="rounded-2xl bg-[#090f1d] border border-slate-800 p-4 flex flex-col justify-between">
+        {/* Panel 3: Đề xuất hành động (AI) */}
+        <div className="rounded-2xl bg-[#061224] border border-[#142c4c] p-4 shadow-xl flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-3">
-              <div className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-cyan-400" />
-                <span>{t.actionsTitle}</span>
+            <div className="flex items-center justify-between pb-2.5 border-b border-[#142c4c] mb-3">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="w-4 h-4 text-[#00e5ff]" />
+                <h3 className="text-xs font-black text-white uppercase tracking-wider">
+                  ĐỀ XUẤT HÀNH ĐỘNG (AI)
+                </h3>
               </div>
               <button
                 onClick={() => onNavigateToTab('tasks')}
-                className="text-xs text-cyan-400 hover:underline flex items-center gap-1"
+                className="text-xs text-[#00e5ff] hover:underline font-bold"
               >
-                <span>{t.viewAll}</span>
-                <span>&gt;</span>
+                Xem tất cả &gt;
               </button>
             </div>
 
-            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-              {aiActions.map(action => (
+            <div className="space-y-2">
+              {actionList.map(act => (
                 <div
-                  key={action.id}
-                  className="p-2.5 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between gap-2"
+                  key={act.order}
+                  onClick={() => handleTriggerAction(act)}
+                  className="p-2 rounded-xl bg-[#081528] border border-[#142c4c] hover:border-cyan-500/50 flex items-center justify-between gap-2 cursor-pointer transition-all group shadow-sm"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-5 h-5 rounded-full bg-slate-800 text-cyan-400 flex items-center justify-center text-xs font-bold shrink-0 font-mono">
-                      {action.order}
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-5 h-5 rounded-full bg-[#0284c7] text-white flex items-center justify-center text-xs font-black shrink-0 font-mono shadow-sm">
+                      {act.order}
                     </span>
-                    <span className="text-xs text-slate-200 truncate">
-                      {action.text}
+                    <span className="text-xs text-slate-200 truncate group-hover:text-cyan-300 transition-colors font-medium">
+                      {act.text}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${
-                      action.priority === 'Cao'
-                        ? 'bg-rose-950/80 text-rose-300 border border-rose-800'
-                        : action.priority === 'Trung bình'
-                        ? 'bg-amber-950/80 text-amber-300 border border-amber-800'
-                        : 'bg-emerald-950/80 text-emerald-300 border border-emerald-800'
-                    }`}>
-                      {action.priority}
-                    </span>
-
-                    {action.status === 'in_progress' ? (
-                      <span className="text-[10px] text-cyan-400 px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-800">
-                        Đang xử lý
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleExecuteAction(action)}
-                        className="px-2 py-0.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-semibold transition-colors"
-                      >
-                        Giao việc
-                      </button>
-                    )}
-                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md font-mono shrink-0 ${act.badgeClass}`}>
+                    {act.priority}
+                  </span>
                 </div>
               ))}
             </div>
-          </div>
-
-          <div className="pt-2 text-[11px] text-slate-500">
-            * Nhấp "Giao việc" để chuyển đề xuất thành nhiệm vụ được giao cho kỹ sư phụ trách.
           </div>
         </div>
       </div>
 
       {/* Model Explanation Modal */}
       {showExplainModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-5 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-[#091526] border border-cyan-800 rounded-2xl max-w-xl w-full p-5 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-cyan-400" />
                 <h3 className="text-base font-bold text-white">
-                  Nguyên lý Mô hình Nhân quả (Causal Network Model)
+                  Giải Thích Thuật Toán Mạng Nhân Quả (Causal AI Network)
                 </h3>
               </div>
               <button onClick={() => setShowExplainModal(false)} className="text-slate-400 hover:text-white">
@@ -692,27 +1036,27 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
 
             <div className="text-xs text-slate-300 space-y-3 leading-relaxed">
               <p>
-                Hệ thống NEURAL LINK V17 sử dụng mạng lưới đồ thị nhân quả trọng số (Weighted Causal Graph) nhằm mô hình hóa luồng biến thiên xuyên suốt chuỗi cung ứng gia công:
+                Mô hình sử dụng mạng Bayes động học (Dynamic Bayesian Network) tích hợp thuật toán phân tích nguyên nhân gốc rễ (Root Cause Driver Analysis) để mô phỏng tác động lan truyền giữa 10 nhân tố sản xuất.
               </p>
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                <div className="text-cyan-300 font-semibold">1. Chuỗi tác động trực tiếp:</div>
-                <p>Kho vật liệu (0.9) & Thiết bị (0.8) & Nhân lực (0.9) tác động trực tiếp đến Sản lượng thực tế.</p>
-                <div className="text-rose-300 font-semibold">2. Tác động lan truyền ngược:</div>
-                <p>Lỗi chất lượng tại QC (0.8) làm tăng khối lượng Rework, hút nhân lực lành nghề và gây nghẽn băng chuyền đóng gói giao hàng (OTD).</p>
-                <div className="text-emerald-300 font-semibold">3. Cơ chế giải tỏa áp lực:</div>
-                <p>Sản lượng Prebuild được tính toán trước nhằm tạo vùng đệm khi có biến động về thay đổi đơn hàng đột xuất.</p>
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5 font-mono text-[11px]">
+                <div className="text-cyan-400 font-bold">• Trọng số liên kết (0.0 → 1.0):</div>
+                <div className="text-slate-300">Biểu thị xác suất điều kiện và mức độ nhạy cảm của sản lượng khi xảy ra biến động tại mắt xích nguồn.</div>
+                <div className="text-emerald-400 font-bold">• Mũi tên xanh lá:</div>
+                <div className="text-slate-300">Tác động tỷ lệ thuận (Tăng cường năng lực đầu ra).</div>
+                <div className="text-rose-400 font-bold">• Mũi tên đỏ:</div>
+                <div className="text-slate-300">Tác động tiêu cực gây tắc nghẽn hoặc sụt giảm sản lượng (Bottleneck).</div>
               </div>
               <p className="text-slate-400 text-[11px]">
-                Toàn bộ trọng số được hiệu chỉnh tự động từ lịch sử dữ liệu GMES và báo cáo kiểm toán QC thực tế, không dùng số liệu giả định.
+                Dữ liệu được cập nhật tự động từ kết nối GMES API và hệ thống SCADA theo chu kỳ 15 phút.
               </p>
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end pt-2 border-t border-slate-800">
               <button
                 onClick={() => setShowExplainModal(false)}
-                className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs"
+                className="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold"
               >
-                Đã hiểu
+                Đóng
               </button>
             </div>
           </div>
@@ -720,64 +1064,4 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
       )}
     </div>
   );
-
-  function renderNodeCard(
-    node: CausalNode,
-    colorClasses: string,
-    accentColor: string,
-    arrowText?: string
-  ) {
-    const Icon = getNodeIcon(node.id);
-    const isSelected = selectedNode?.id === node.id;
-
-    return (
-      <div
-        key={node.id}
-        onClick={() => setSelectedNode(node)}
-        className={`p-3 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group select-none ${colorClasses} ${
-          isSelected ? 'ring-2 ring-cyan-400 scale-[1.02] shadow-[0_0_20px_rgba(6,182,212,0.3)]' : 'hover:scale-[1.01]'
-        }`}
-      >
-        <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <div className={`p-1.5 rounded-lg bg-black/40 ${accentColor}`}>
-              <Icon className="w-3.5 h-3.5" />
-            </div>
-            <span className="text-xs font-bold text-white tracking-wide truncate">
-              {node.label}
-            </span>
-          </div>
-          {arrowText && (
-            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-black/40 text-slate-300">
-              {arrowText}
-            </span>
-          )}
-        </div>
-
-        <ul className="space-y-0.5 text-[10px] text-slate-300">
-          {node.bulletPoints.map((bp, i) => (
-            <li key={i} className="truncate flex items-center gap-1">
-              <span className={`w-1 h-1 rounded-full ${accentColor} inline-block`} />
-              <span>{bp}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
-
-  function mapNodeToModule(nodeId: string): string {
-    switch (nodeId) {
-      case 'node-plan': return 'production';
-      case 'node-prebuild': return 'production';
-      case 'node-material': return 'materials';
-      case 'node-hr': return 'vendors';
-      case 'node-equipment': return 'equipment';
-      case 'node-qc': return 'quality';
-      case 'node-rework': return 'quality';
-      case 'node-output': return 'production';
-      case 'node-delivery': return 'production';
-      default: return 'overview';
-    }
-  }
 };

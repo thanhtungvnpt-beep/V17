@@ -1,11 +1,10 @@
 import React from 'react';
 import { 
-  LayoutDashboard, Calendar, BarChart3, Truck, ShieldCheck, 
-  Users, Wrench, Package, Layers, Sparkles, 
-  FileText, Settings, Terminal, Building2, CheckSquare, Smartphone
+  Home, Calendar, BarChart3, Truck, ShieldCheck, 
+  Users, Cog, Building, Layers, Compass, 
+  FileText, Settings
 } from 'lucide-react';
 import { Language, Vendor } from '../types';
-import { translations } from '../locales/i18n';
 
 interface SidebarProps {
   activeTab: string;
@@ -19,85 +18,71 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onSelectTab,
-  currentLang,
   vendors,
   selectedVendorId,
   onSelectVendor
 }) => {
-  const t = translations[currentLang];
-
   const mainNavItems = [
-    { id: 'overview', label: t.navOverview, icon: LayoutDashboard },
-    { id: 'production', label: t.navPlan, icon: Calendar },
-    { id: 'vendors', label: t.navVendors, icon: Building2 },
-    { id: 'quality', label: t.navQuality, icon: ShieldCheck },
-    { id: 'equipment', label: t.navEquipment, icon: Wrench },
-    { id: 'materials', label: t.navMaterials, icon: Package },
-    { id: 'kpi', label: t.navKPI, icon: BarChart3 },
-    { id: 'ai-assistant', label: t.navAIAssistant, icon: Sparkles },
-    { id: 'tasks', label: t.navTasksApprovals, icon: CheckSquare },
-    { id: 'mobile', label: t.navMobile, icon: Smartphone },
-    { id: 'developer', label: t.navDeveloperConsole, icon: Terminal, isDev: true },
+    { id: 'overview', label: 'Tổng quan', icon: Home, targetTab: 'overview' },
+    { id: 'production', label: 'Kế hoạch sản xuất', icon: Calendar, targetTab: 'production' },
+    { id: 'actual-output', label: 'Sản lượng thực tế', icon: BarChart3, targetTab: 'production' },
+    { id: 'delivery', label: 'Giao hàng (TO/OTD)', icon: Truck, targetTab: 'kpi' },
+    { id: 'quality', label: 'Chất lượng', icon: ShieldCheck, targetTab: 'quality' },
+    { id: 'hr', label: 'Nhân lực', icon: Users, targetTab: 'tasks' },
+    { id: 'equipment', label: 'Thiết bị', icon: Cog, targetTab: 'equipment' },
+    { id: 'materials', label: 'Kho vật liệu', icon: Building, targetTab: 'materials' },
+    { id: 'prebuild', label: 'Prebuild & Rework', icon: Layers, targetTab: 'production' },
+    { id: 'ai-assistant', label: 'Phân tích AI', icon: Compass, targetTab: 'ai-assistant' },
+    { id: 'reports', label: 'Báo cáo', icon: FileText, targetTab: 'ai-assistant' },
+    { id: 'developer', label: 'Cài đặt', icon: Settings, targetTab: 'developer' },
   ];
 
-  const vendorDotColors: Record<string, string> = {
-    'v-khv': 'bg-emerald-400',
-    'v-dreamtech': 'bg-amber-400',
-    'v-hstec': 'bg-cyan-400',
-    'v-ktech': 'bg-purple-400',
-    'v-hojeongb': 'bg-blue-400',
-    'v-hojeongvina': 'bg-indigo-400',
-    'v-daal': 'bg-rose-500',
+  const vendorColorMap: Record<string, string> = {
+    'KHV': 'bg-[#00e5ff] shadow-[0_0_8px_#00e5ff]',
+    'DREAM TECH': 'bg-[#f97316] shadow-[0_0_8px_#f97316]',
+    'HSTEC': 'bg-[#38bdf8] shadow-[0_0_8px_#38bdf8]',
+    'KTECH': 'bg-[#a855f7] shadow-[0_0_8px_#a855f7]',
+    'HOJEONGB': 'bg-[#06b6d4] shadow-[0_0_8px_#06b6d4]',
+    'HOJEONG VINA': 'bg-[#818cf8] shadow-[0_0_8px_#818cf8]',
+    'DAAL': 'bg-[#ef4444] shadow-[0_0_8px_#ef4444]',
   };
 
   return (
-    <aside className="w-56 lg:w-64 bg-[#070d18] border-r border-slate-800/80 flex flex-col shrink-0 select-none">
+    <aside className="no-print w-56 lg:w-60 bg-[#061122] border-r border-[#152e50] flex flex-col shrink-0 select-none">
       {/* Navigation Links */}
       <div className="flex-1 py-3 px-2.5 space-y-1 overflow-y-auto">
-        <div className="px-3 pb-1 text-[10px] uppercase font-bold tracking-wider text-slate-500">
-          User Operations
-        </div>
-
         {mainNavItems.map(item => {
           const Icon = item.icon;
-          const isActive = activeTab === item.id;
+          const isActive = activeTab === item.targetTab && (item.id === 'overview' || activeTab === item.id);
           return (
             <button
               key={item.id}
-              onClick={() => onSelectTab(item.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all group ${
+              onClick={() => onSelectTab(item.targetTab)}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all group ${
                 isActive
-                  ? item.isDev
-                    ? 'bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
-                    : 'bg-cyan-500/15 text-cyan-300 font-semibold border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.2)]'
-                  : item.isDev
-                  ? 'text-amber-400/80 hover:text-amber-300 hover:bg-amber-950/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                  ? 'bg-[#0070d8] text-white shadow-[0_0_15px_rgba(0,112,216,0.5)]'
+                  : 'text-slate-300 hover:text-white hover:bg-[#0c1f38]'
               }`}
             >
-              <Icon className={`w-4 h-4 shrink-0 ${isActive ? (item.isDev ? 'text-amber-400' : 'text-cyan-400') : 'text-slate-400 group-hover:text-slate-200'}`} />
+              <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-cyan-300'}`} />
               <span className="truncate">{item.label}</span>
-              {item.isDev && (
-                <span className="ml-auto text-[9px] px-1 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-600/40">
-                  ADM
-                </span>
-              )}
             </button>
           );
         })}
       </div>
 
-      {/* Pinned 7 Outsourcing Vendors */}
-      <div className="p-3 border-t border-slate-800/80 bg-[#060a12]">
-        <div className="flex items-center justify-between mb-2 px-1">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            7 Nhà gia công
+      {/* Pinned 7 Outsourcing Vendors matching Screenshot */}
+      <div className="p-3 border-t border-[#152e50] bg-[#050e1c]">
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <span className="text-sm font-black text-white">7</span>
+          <span className="text-xs font-extrabold uppercase tracking-wider text-white">
+            NHÀ GIA CÔNG
           </span>
-          <span className="text-[10px] text-cyan-400 font-mono">Real-time</span>
         </div>
         <div className="space-y-1">
           {vendors.map(v => {
             const isSelected = selectedVendorId === v.id;
+            const dotClass = vendorColorMap[v.code] || 'bg-cyan-400';
             return (
               <button
                 key={v.id}
@@ -107,21 +92,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onSelectTab('vendors');
                   }
                 }}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] transition-colors ${
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
                   isSelected 
-                    ? 'bg-slate-800 text-white font-semibold' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80'
+                    ? 'bg-[#0c223f] text-cyan-300 font-bold border border-cyan-700/60' 
+                    : 'text-slate-300 hover:text-white hover:bg-[#0c1f38]'
                 }`}
               >
-                <div className="flex items-center gap-2 truncate">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${vendorDotColors[v.id] || 'bg-slate-400'}`} />
-                  <span className="truncate">{v.code}</span>
+                <div className="flex items-center gap-2.5 truncate">
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotClass}`} />
+                  <span className="truncate font-semibold tracking-wide text-xs">{v.code}</span>
                 </div>
-                <span className={`font-mono tabular-nums text-[10px] ${
-                  v.completionRate >= 80 ? 'text-emerald-400' : v.completionRate >= 60 ? 'text-amber-400' : 'text-rose-400'
-                }`}>
-                  {v.completionRate}%
-                </span>
               </button>
             );
           })}

@@ -46,3 +46,36 @@
 .glow-line {
   animation: pulseGlow 3s ease-in-out infinite;
 }
+
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+  }
+  header, aside, nav, .no-print, button:not(.print-allow) {
+    display: none !important;
+  }
+  .print-clean {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border: 1px solid #d1d5db !important;
+    box-shadow: none !important;
+  }
+  #printable-operations-report {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+}
+

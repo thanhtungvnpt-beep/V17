@@ -12,7 +12,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
 // Initialize GoogleGenAI if key is provided
 let ai: GoogleGenAI | null = null;
@@ -280,6 +281,119 @@ NGƯỜI LẬP BÁO CÁO                TRƯỞNG NHÓM OUTSOURCING GROUP
     text: responseText,
     source: 'DOMAIN_RULE_ENGINE',
     mode,
+  });
+});
+
+// 4. Audio Voice Note Transcription & Task Extraction Endpoint
+app.post('/api/gemini/audio-task', async (req, res) => {
+  const { audioBase64, mimeType = 'audio/webm', sampleText } = req.body;
+
+  if (ai && audioBase64) {
+    try {
+      const audioPart = {
+        inlineData: {
+          mimeType,
+          data: audioBase64,
+        },
+      };
+
+      const promptPart = {
+        text: `Bạn là trợ lý điều hành sản xuất thông minh của hệ thống NEURAL LINK V17 (Outsourcing Group).
+Hãy phân tích âm thanh ghi âm này và thực hiện 2 nhiệm vụ:
+1. Chuyển đổi toàn bộ giọng nói ghi âm thành văn bản tiếng Việt chính xác (Transcript).
+2. Trích xuất thành một Nhiệm vụ Sản xuất cụ thể (Actionable Production Task).
+
+Yêu cầu trả về đúng định dạng JSON:
+{
+  "transcript": "nội dung văn bản nhận dạng được",
+  "task": {
+    "title": "Tiêu đề ngắn gọn của nhiệm vụ",
+    "vendorCode": "Mã nhà máy (KHV, DREAM TECH, HSTEC, KTECH, HOJEONGB, HOJEONG VINA, DAAL) hoặc 'TOÀN GROUP'",
+    "priority": "Cao" | "Trung bình" | "Thấp",
+    "category": "Vật liệu" | "Thiết bị" | "Chất lượng QC" | "Nhân lực" | "Kế hoạch",
+    "deadline": "Hạn hoàn thành (ví dụ: Hôm nay 16:30 hoặc trong 2 giờ)",
+    "assigneeRole": "Vai trò người phụ trách đề xuất (OutsourcingManager, QCOfficer, EquipmentTech, MaterialPlanner, VendorManager)",
+    "actionableDetails": "Chi tiết các bước thực hiện can thiệp",
+    "requiresApproval": true
+  }
+}
+Chỉ xuất ra chuỗi JSON thuần túy, không thêm markdown hay giải thích ngoài.`,
+      };
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: { parts: [audioPart, promptPart] },
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.2,
+        },
+      });
+
+      if (response.text) {
+        const parsed = JSON.parse(response.text.trim());
+        return res.json({
+          success: true,
+          source: 'GEMINI_AI',
+          transcript: parsed.transcript || 'Đã ghi âm thành công',
+          task: parsed.task,
+        });
+      }
+    } catch (err: any) {
+      console.error('Gemini Audio Transcription Error:', err);
+    }
+  }
+
+  // Domain fallback for speech or sample text notes
+  let transcript = sampleText || 'Báo cáo khẩn từ xưởng: Nhà máy DAAL hiện đang cạn kiệt IC nguồn TPS54302, chỉ còn đệm 1.5 giờ. Đề xuất điều chuyển khẩn 2,000 con từ kho đệm KHV sang trước 16:00.';
+  let vendorCode = 'DAAL';
+  let category = 'Vật liệu';
+  let priority = 'Cao';
+  let title = 'Điều chuyển 2,000 IC nguồn TPS54302 từ KHV sang cứu chuyền DAAL';
+  let actionableDetails = 'Liên hệ thủ kho KHV xuất 2,000 pcs IC nguồn TPS54302, bàn giao xe tải điều vận chuyển giao sang xưởng DAAL trong 90 phút.';
+  let requiresApproval = true;
+  let deadline = 'Hôm nay 16:00';
+  let assigneeRole = 'MaterialPlanner';
+
+  if (transcript.toLowerCase().includes('ktech') || transcript.toLowerCase().includes('máy') || transcript.toLowerCase().includes('feeder')) {
+    vendorCode = 'KTECH';
+    category = 'Thiết bị';
+    priority = 'Cao';
+    title = 'Thay thế feeder #14 và căn chỉnh camera mounter line 2 KTECH';
+    actionableDetails = 'Kỹ thuật viên KTECH tháo feeder slot #14, thay feeder dự phòng, vệ sinh cảm biến quang học và chạy mẫu 50 board.';
+    deadline = 'Hôm nay 15:30';
+    assigneeRole = 'EquipmentTech';
+  } else if (transcript.toLowerCase().includes('hojeong') || transcript.toLowerCase().includes('hàn') || transcript.toLowerCase().includes('thiếc') || transcript.toLowerCase().includes('lỗi')) {
+    vendorCode = 'HOJEONG VINA';
+    category = 'Chất lượng QC';
+    priority = 'Trung bình';
+    title = 'Hiệu chuẩn nhiệt độ bể hàn sóng 255°C và đóng CAPA Hojeong Vina';
+    actionableDetails = 'Đo lại profile nhiệt bể hàn thiếc sóng, kiểm tra nồng độ flux và lấy 100 mẫu FQC nghiệm thu.';
+    deadline = 'Hôm nay 17:00';
+    assigneeRole = 'QCOfficer';
+  } else if (transcript.toLowerCase().includes('nhân công') || transcript.toLowerCase().includes('công nhân') || transcript.toLowerCase().includes('hstec')) {
+    vendorCode = 'HSTEC';
+    category = 'Nhân lực';
+    priority = 'Cao';
+    title = 'Bổ sung 12 công nhân lắp ráp chuyền 2 cho HSTEC';
+    actionableDetails = 'Điều động đội ngũ dự phòng từ KCN Quế Võ và sắp xếp tăng ca 1.5 giờ cho ca 1.';
+    deadline = 'Hôm nay 15:00';
+    assigneeRole = 'VendorManager';
+  }
+
+  res.json({
+    success: true,
+    source: 'DOMAIN_AUDIO_PARSER',
+    transcript,
+    task: {
+      title,
+      vendorCode,
+      priority,
+      category,
+      deadline,
+      assigneeRole,
+      actionableDetails,
+      requiresApproval,
+    },
   });
 });
 
