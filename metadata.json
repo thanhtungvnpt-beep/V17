@@ -1,0 +1,6 @@
+{
+  "name": "NEURAL LINK V17 - Production Operations Platform",
+  "description": "Nền tảng quản lý vận hành sản xuất thuê ngoài hoàn chỉnh (Outsourcing Production Control Center) và Developer Integration Console.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
